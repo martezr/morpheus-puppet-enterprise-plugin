@@ -1,0 +1,308 @@
+<!--<link rel="stylesheet" nonce="{{webnonce}}" href="{{asset "/bootstrap.min.css"}}">-->
+<script nonce="{{webnonce}}" type="text/javascript">
+    var dropdown = document.getElementsByClassName("dropdown-menu")
+	// TODO: Find a better way to select the desired drop-down
+	console.log(dropdown[2])
+
+	// Add console link
+	var consoleLinkButton = document.createElement('li');
+	var consoleLink = document.createElement('a');
+	consoleLink.text = "Open PE Console"
+	consoleLink.target = "_blank"
+	consoleLink.href = "{{pe_server}}"
+	consoleLinkButton.appendChild(consoleLink)
+	dropdown[2].appendChild(consoleLinkButton)
+
+{{#if control_repo_defined}}
+	// Add control repository link
+	var controlRepoLinkButton = document.createElement('li');
+	var controlRepoLink = document.createElement('a');
+	controlRepoLink.text = "Open Control Repository"
+	controlRepoLink.target = "_blank"
+	controlRepoLink.href = "{{control_repo_url}}"
+	controlRepoLinkButton.appendChild(controlRepoLink)
+	dropdown[2].appendChild(controlRepoLinkButton)
+{{/if}}
+</script>
+
+<style>
+.card {
+  transition: 0.3s;
+  width: 80%;
+  border-radius: 6px;
+  border: 2px solid #bacdd8;
+  height: 150px;
+}
+
+.card:hover {
+  box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+}
+
+.container {
+  padding: 2px 16px;
+}
+</style>
+
+<div class="network-servers-detail">
+	<div class="row">
+		<div class="row-container" role="tabpanel">
+			<!-- Nav tabs -->
+			<ul class="nav nav-tabs" role="tablist">
+				<li role="presentation" class="active">
+					<a href="#puppet-enterprise-summary" aria-controls="network-server-summary" role="tab"
+					   data-toggle="tab" aria-expanded="true">
+						Summary
+					</a>
+				</li>
+				<li role="presentation" class="">
+					<a href="#puppet-enterprise-nodes" aria-controls="aci-tenant-records" role="tab" data-toggle="tab"
+					   aria-expanded="false">Nodes</a>
+				</li>
+				<li role="presentation" class="">
+					<a href="#puppet-enterprise-bolt-tasks" aria-controls="aci-tenant-records" role="tab" data-toggle="tab"
+					   aria-expanded="false">Tasks</a>
+				</li>
+				<li role="presentation" class="">
+					<a href="#puppet-enterprise-bolt-plans" aria-controls="aci-tenant-records" role="tab" data-toggle="tab"
+					   aria-expanded="false">Plans</a>
+				</li>
+			</ul>
+			<!-- Tab panes -->
+			<div class="tab-content">
+				<div role="tabpanel" class="tab-pane active" id="puppet-enterprise-summary">
+						<div class="info info-details">
+							<dl class="info-list" style="font-size: 18px;">
+								<div><dt>PE Server</dt>: <dd>{{pe_server}}</dd></div>
+								<div><dt>Version</dt>: <dd>{{pe_version}}</dd></div>
+								<!--dedicatedHosts-->
+								<div><dt>Total active nodes</dt>: <dd>{{node_count}}</dd></div>
+								<!--keyPairs-->
+								<!--placementGroups-->
+								<!--snapshots
+								<div><dt>Load Balancers</dt>: <dd>0</dd></div>
+								<div><dt>Subnets</dt>: <dd>55</dd></div>
+								<div><dt>Security Groups</dt>: <dd>26</dd></div>
+								-->
+								<!--elasticIps-->
+							</dl>
+						</div>
+					<div class="resource-detail">
+						<div class="row">
+							<div class="incident-stats">
+								<div class="stats-container host-total">
+									<span class="big-stat">{{node_count}}</span>
+									<div class="stat-label">Nodes</div>
+								</div>
+								<div class="stats-container host-failed">
+									<span class="big-stat">{{unchanged_count}}</span>
+									<div class="stat-label">Unchanged</div>
+								</div>
+								<div class="stats-container inventory-total">
+									<span class="big-stat">{{corrective_change_count}}</span>
+									<div class="stat-label">Corrective Changes</div>
+								</div>
+								<div class="stats-container inventory-failed">
+									<span class="big-stat">0</span>
+									<div class="stat-label">Intentional Changes</div>
+								</div>
+								<div class="stats-container project-total">
+									<span class="big-stat">0</span>
+									<div class="stat-label">Failures</div>
+								</div>
+								<div class="stats-container project-failed">
+									<span class="big-stat">0</span>
+									<div class="stat-label">Unresponsive</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div role="tabpanel" class="tab-pane" id="puppet-enterprise-nodes">
+					<div class="title-container clearfix">
+						<h2 class="pull-left title">Nodes</h2>
+					</div>
+					<div class="aci-tenant-record-search">
+						<form action="/integration/aci/31/tenants" method="get" role="form"
+							  class="form-inline aci-tenant-record-search-form">
+							<div class="input-group searchBar">
+								<input type="text" class="form-control form-submit-on-change aci-phrase" name="phrase"
+									   value="" placeholder="Search" id="phrase">
+								<span class="input-group-btn">
+									<button class="btn btn-primary search-btn" type="button"><span
+											class="glyphicon glyphicon-search"></span></button>
+								</span>
+							</div>
+							<!--actions-->
+							<input type="hidden" name="_csrf" value="2066026a-b673-46f6-bbf0-773d8e3a4514">
+						</form>
+						<hr>
+					</div>
+					<div class="aci-tenant-record-list">
+						<div class="aci-tenant-data" data-integration-id="150" data-replace="true" data-offset=""
+							 data-max="" data-phrase="" data-sort="" data-direction="">
+							<table class="table table-mid hidden-xs">
+								<thead>
+								<tr>
+									<th style="width:80px;">Status</th>
+									<th>Name</th>
+									<th>TimeStamp</th>
+									<th>Environment</th>
+								</tr>
+								</thead>
+								<tbody>
+									{{#each nodes}}
+										<tr>
+											<td>{{latest_report_status}}</td>
+											<td>{{certname}}</td>
+											<td>{{report_timestamp}}</td>
+											<td>{{catalog_environment}}</td>
+										</tr>
+									{{/each}}
+								</tbody>
+							</table>
+							<div class="morpheus-paging">
+								<span class="currentStep">1</span><a
+									href="/integration/aci/31/tenants?sort=&amp;direction=&amp;phrase=&amp;offset=25&amp;max=25"
+									class="step">2</a><a
+									href="/integration/aci/31/tenants?sort=&amp;direction=&amp;phrase=&amp;offset=25&amp;max=25"
+									class="nextLink">»</a>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div role="tabpanel" class="tab-pane" id="puppet-enterprise-bolt-tasks">
+					<div class="title-container clearfix">
+						<h2 class="pull-left title">Tasks</h2>
+					</div>
+					<div class="aci-tenant-record-search">
+						<form action="/integration/aci/31/tenants" method="get" role="form"
+							  class="form-inline aci-tenant-record-search-form">
+							<div class="input-group searchBar">
+								<input type="text" class="form-control form-submit-on-change aci-phrase" name="phrase"
+									   value="" placeholder="Search" id="phrase">
+								<span class="input-group-btn">
+									<button class="btn btn-primary search-btn" type="button"><span
+											class="glyphicon glyphicon-search"></span></button>
+								</span>
+							</div>
+							<!--actions-->
+							<input type="hidden" name="_csrf" value="2066026a-b673-46f6-bbf0-773d8e3a4514">
+						</form>
+						<hr>
+					</div>
+					<div class="aci-tenant-record-list">
+						<div class="aci-tenant-data" data-integration-id="150" data-replace="true" data-offset=""
+							 data-max="" data-phrase="" data-sort="" data-direction="">
+							<table class="table table-mid hidden-xs">
+								<thead>
+								<tr>
+									<th style="width:80px;">Status</th>
+									<th>Name</th>
+									<th>Description</th>
+									<th>Dn</th>
+									<th>UID</th>
+									<th style="width:100px;"></th>
+								</tr>
+								</thead>
+								<tbody>
+
+								<tr>
+									<td class="status status-indent"><span class="statusIcon status-provisioned "
+																		   title="ok"></span></td>
+									<td>AMS-ACI-DEVNET</td>
+									<td></td>
+									<td>uni/tn-AMS-ACI-DEVNET</td>
+									<td>15374</td>
+									<td align="right" class="actions">
+
+										<a href="/integration/aci/31/tenant/24637" data-method="delete"
+										   data-remote="true" title="Delete ACI Tenant"
+										   data-confirm="Are you sure you want to remove this ACI tenant from the APIC?"
+										   class="btn btn-sm btn-link btn-link-icon tenant-record-delete">
+											<span class="btn-icon btn-icon-trashcan"></span>
+										</a>
+
+									</td>
+								</tr>
+
+								<tr>
+									<td class="status status-indent"><span class="statusIcon status-provisioned "
+																		   title="ok"></span></td>
+									<td>bk_10018</td>
+									<td>Tenant Created Using Ansible</td>
+									<td>uni/tn-bk_10018</td>
+									<td>15374</td>
+									<td align="right" class="actions">
+
+										<a href="/integration/aci/31/tenant/24666" data-method="delete"
+										   data-remote="true" title="Delete ACI Tenant"
+										   data-confirm="Are you sure you want to remove this ACI tenant from the APIC?"
+										   class="btn btn-sm btn-link btn-link-icon tenant-record-delete">
+											<span class="btn-icon btn-icon-trashcan"></span>
+										</a>
+
+									</td>
+								</tr>
+								</tbody>
+							</table>
+							<div class="morpheus-paging">
+								<span class="currentStep">1</span><a
+									href="/integration/aci/31/tenants?sort=&amp;direction=&amp;phrase=&amp;offset=25&amp;max=25"
+									class="step">2</a><a
+									href="/integration/aci/31/tenants?sort=&amp;direction=&amp;phrase=&amp;offset=25&amp;max=25"
+									class="nextLink">»</a>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div role="tabpanel" class="tab-pane" id="puppet-enterprise-bolt-plans">
+					<div class="title-container clearfix">
+						<h2 class="pull-left title">Plans</h2>
+					</div>
+					<div class="aci-tenant-record-search">
+						<form action="/integration/aci/31/tenants" method="get" role="form"
+							  class="form-inline aci-tenant-record-search-form">
+							<div class="input-group searchBar">
+								<input type="text" class="form-control form-submit-on-change aci-phrase" name="phrase"
+									   value="" placeholder="Search" id="phrase">
+								<span class="input-group-btn">
+									<button class="btn btn-primary search-btn" type="button"><span
+											class="glyphicon glyphicon-search"></span></button>
+								</span>
+							</div>
+							<!--actions-->
+							<input type="hidden" name="_csrf" value="2066026a-b673-46f6-bbf0-773d8e3a4514">
+						</form>
+						<hr>
+					</div>
+					<div class="aci-tenant-record-list">
+						<div class="aci-tenant-data" data-integration-id="150" data-replace="true" data-offset=""
+							 data-max="" data-phrase="" data-sort="" data-direction="">
+							<table class="table table-mid hidden-xs">
+								<thead>
+								<tr>
+									<th>Name</th>
+								</tr>
+								</thead>
+								<tbody>
+									{{#each plans}}
+										<tr>
+											<td>{{name}}</td>
+										</tr>
+									{{/each}}
+								</tbody>
+							</table>
+							<div class="morpheus-paging">
+								<span class="currentStep">1</span><a
+									href="/integration/aci/31/tenants?sort=&amp;direction=&amp;phrase=&amp;offset=25&amp;max=25"
+									class="step">2</a><a
+									href="/integration/aci/31/tenants?sort=&amp;direction=&amp;phrase=&amp;offset=25&amp;max=25"
+									class="nextLink">»</a>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>

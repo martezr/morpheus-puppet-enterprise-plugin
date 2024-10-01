@@ -1,0 +1,99 @@
+<div class="analytics-data-view">
+	<div class="report-header">
+		<h2>Bolt Automation Analytics</h2>
+		
+		<!--<form action="/operations/analytics/bolt.plan" method="get" id="report-actions" role="form" class="form-inline analytics-search-form" data-code="bolt.plan">-->
+		<form action="/operations/analytics/bolt.plan" method="get" id="report-actions" role="form" class="form-inline analytics-search-form" data-code="bolt.plan">
+
+			<div>
+				<div class="input-group searchBar">
+					<input type="text" class="form-control analytics-option analytics-search-phrase" name="phrase" value="" placeholder="Search" id="phrase">
+					<span class="input-group-btn">
+						<button class="btn btn-primary search-btn" type="button">
+							<span class="glyphicon glyphicon-search"></span>
+						</button>
+					</span>
+				</div>
+				<div class="input-group">
+					<select id="siteId" name="siteId" class="form-control input-sm min-input analytics-option" data-option-source="groups">
+						<option value="">Select Group</option>
+						<option value="2">data engineering</option>
+						<option value="3">platform engineering</option>
+						<option value="6">tfdemo1</option>
+						<option value="5">tftest</option>
+					</select>
+				</div>
+				<div class="input-group">
+					<select id="zoneId" name="zoneId" class="form-control input-sm min-input analytics-option" data-option-source="clouds">
+						<option value="">Select Cloud</option>
+						<option value="141">democloud</option>
+						<option value="147">kubecloud</option>
+						<option value="139">morpheuscloud</option>
+					</select>
+				</div>
+			</div>
+			<hr>
+			<input id="pebolt" type="hidden" name="_csrf">
+		</form>
+	
+	</div>
+	<div class="data-view">
+		{{data}}
+	</div>
+	<div class="break-container">
+			<h4>Instance Type Usage</h4>
+			<div class="instance-type-list analytics-instance-types" data-status="" data-server-type="" data-offset="" data-max="" data-phrase="" data-sort="" data-direction="">
+				<table class="table server-list-table hidden-xs">
+					<thead>
+						<tr>
+							<th style="width:200px;">Type</th>
+							<th>Name</th>
+							<th style="width:100px;" class="number-cell">
+								Groups
+							</th>
+							<th style="width:100px;" class="number-cell">
+								Clouds
+							</th>
+							<th style="width:100px;" class="number-cell">
+								
+									Count
+								
+								
+							</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr style="vertical-align:middle">
+							<td>
+								
+									<img src="https://demo.morpheusdata.com/storage/logos/uploads/InstanceType/71/logo/morpheus-symbolonly-v2_medium.png" class="cloud-type-thumb-md onerror">
+								
+							</td>
+							<td>Morpheus</td>
+							<td class="number-cell">1</td>
+							<td class="number-cell">1</td>
+							<td class="number-cell">
+								
+									2
+								
+								
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+	</div>
+</div>
+
+<script nonce="{{webnonce}}">
+   var csrfValue = document.querySelector("meta[name='_csrf']").attributes['content'].value;
+   console.log(csrfValue)
+    var csrfEl = document.getElementById("pebolt");
+    csrfEl.value = csrfValue;
+   //document.getElementById("createBackupSubmit").addEventListener("click", function(e){
+   //   console.log(csrfValue)
+   //   var csrfEl = document.getElementById("createBackupSubmit");
+   //   csrfEl.value = csrfValue;
+   //   $('#resource-info-modal').modal( 'hide' )
+   //});
+</script>

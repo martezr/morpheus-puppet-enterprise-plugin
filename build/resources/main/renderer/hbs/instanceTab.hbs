@@ -1,0 +1,198 @@
+<script nonce="{{webnonce}}" src="https://unpkg.com/@alenaksu/json-viewer@2.0.0/dist/json-viewer.bundle.js"></script>
+<script nonce="{{webnonce}}" type="text/javascript">
+   console.log("TESTING INSTANCE STUFF")
+	header = document.querySelector("#instance-header-info > div.page-resource-header")
+	var driftAlert = document.createElement('div');
+	driftAlert.className = "alert alert-warning with-button"
+	var test = document.createElement('p');
+	var alertContent = document.createElement('a');
+	alertContent.className = "btn btn-warning pull-right apply-app"
+	alertContent.pathname = "/provisioning/apps/6/prepareApply"
+	alertContent.innerText = "APPLY STATE"
+	//test.appendChild(alertContent)
+	test.innerHTML = "\n    <a href=\"/provisioning/apps/6/prepareApply\" class=\"btn btn-warning pull-right apply-app\" data-remote=\"true\">\n\t\t\t\t\t\t\t\t\tRun Puppet\n\t\t\t\t\t\t\t\t</a>\n    \n    Puppet Enterprise: Drift has been detected for this instance."
+
+	driftAlert.appendChild(test)
+	header.appendChild(driftAlert)
+</script>
+
+<ul class="view-type nav nav-pills nav-justified" >
+   <li role="presentation" class="active"><a href="#overview-tab" data-toggle="pill" role="tab">Overview</a></li>
+   <li role="presentation"><a href="#facts-tab" data-toggle="pill" role="tab">Facts</a></li>
+</ul>
+<div class="tab-content">
+   <div id="overview-tab" role="tabpanel" class="tab-pane active">
+      <div class="row">
+         <div class="col-sm-6">
+            <h2>Overview</h2>
+         </div>
+         <div class="col-sm-6 text-right">
+            <div id="instance-actions" class="btn-group" style="margin-top: 15px;">
+               <button type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+               Actions <span class="caret"></span>
+               </button>
+               <ul class="dropdown-menu">
+                  <li>
+                     <a href="https://grtpe01.grt.local/#/inventory/node/{{certname}}/reports" target="_blank">Open PE Console</a>
+                  </li>
+                  <li>
+                     <a href="/instances/workflowPrompt/{{id}}" data-remote="true" data-method="PUT" data-target="#workflow-instance-modal" class="instance-workflow-button" data-toggle="modal">Run Workflow</a>
+                  </li>
+                  <li>
+                     <a href="/instances/taskPrompt/{{id}}" data-remote="true" data-method="PUT" data-target="#task-instance-modal" class="instance-task-button" data-toggle="modal">Run Task</a>
+                  </li>
+               </ul>
+            </div>
+         </div>
+      </div>
+      <hr>
+      <div class="incident-stats">
+         <div class="stats-container big-stat-block">
+            <span class="stat-content">{{status}}</span>
+            <span class="stat-label">Status</span>
+         </div>
+         <div class="stats-container big-stat-block">
+            <span class="stat-content">{{environment}}</span>
+            <span class="stat-label">Environment</span>
+         </div>
+         <div class="stats-container big-stat-block">
+            <span class="stat-content">{{resources}}</span>
+            <span class="stat-label">Puppet Managed Resources</span>
+         </div>
+         <div class="stats-container big-stat-block">
+            <span class="stat-content">{{agentversion}}</span>
+            <span class="stat-label">Agent Version</span>
+         </div>
+      </div>
+      <div class="header-meta-info">
+         <p>Reports</p>
+      <table>
+         <thead>
+            <th>Status</th>
+            <th>Reported At</th>
+            <th>Total Resources</th>
+            <th>Failed Resources</th>
+            <th>Changed Resources</th>
+            <th>Skipped Resources</th>
+            <th>Run Time (sec)</th>
+         </thead>
+         <tbody>
+            {{#each reports}}
+            <tr>
+               {{#if this.isChanged}}
+               <td class="status fake-center"><span class="statusIcon status-inprogress" title="ok"></span></td>
+               {{/if}}
+               {{#if this.isNoChange}}
+               <td class="status fake-center"><span class="statusIcon status-provisioned" title="ok"></span></td>
+               {{/if}}
+               {{#if this.isFailed}}
+               <td class="status fake-center"><span class="statusIcon status-failed" title="ok"></span></td>
+               {{/if}}
+               <td>{{this.receive_time}}</td>
+               <td>{{this.total}}</td>
+               <td>{{this.failed}}</td>
+               <td>{{this.changed}}</td>
+               <td>{{this.skipped}}</td>
+               <td>{{this.run_time}}</td>
+            </tr>
+            {{/each}}
+         </tbody>
+      </table>
+      </div>
+   </div>
+   <div id="facts-tab" role="tabpanel" class="tab-pane">
+      <div class="row">
+         <div class="col-sm-6">
+            <h2>Facts</h2>
+         </div>
+         <div class="col-sm-6 text-right">
+            <div id="instance-actions" class="btn-group" style="margin-top: 15px;">
+               <button type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+               Actions <span class="caret"></span>
+               </button>
+               <ul class="dropdown-menu">
+                  <li>
+                     <a href="https://app.datadoghq.com/infrastructure?tags=host%3A{{name}}" target="_blank">Open Dashboard</a>
+                  </li>
+                  <li>
+                     <a href="/instances/workflowPrompt/{{id}}" data-remote="true" data-method="PUT" data-target="#workflow-instance-modal" class="instance-workflow-button" data-toggle="modal">Run Puppet</a>
+                  </li>
+                  <li>
+                     <a href="/instances/taskPrompt/{{id}}" data-remote="true" data-method="PUT" data-target="#task-instance-modal" class="instance-task-button" data-toggle="modal">Run Task</a>
+                  </li>
+               </ul>
+            </div>
+         </div>
+      </div>
+      <hr>
+      <json-viewer id="json" style="padding-left: 15px;padding-top: 15px;padding-bottom: 15px;font-size: 14px;"></json-viewer>
+     <!-- <table class="table table-middle" id="facts-table">
+         <thead>
+            <tr>
+               <th>Name</th>
+               <th>Value</th>
+            </tr>
+         </thead>
+         <tbody id="facts-table-body">		
+         </tbody>
+      </table> -->
+   </div>
+</div>
+
+<style>
+
+.badge {
+	background-color: #632CA6;
+}
+.big-stat-block {
+  margin-top: 15px;
+  margin-bottom: 40px;
+}
+
+.resource-detail .type-logo .logo {
+	margin-top: 0px;
+}
+.instance .incident-stats .status-icon {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.instance .incident-stats {
+  margin-bottom: 22px;
+}
+</style>
+
+<script nonce="{{webnonce}}">
+   var inputData = '{{ facts_json }}'
+   data = inputData.replace(/&quot;/g, '"')
+   console.log(data)
+   var taskData = JSON.parse(data)
+   document.querySelector('#json').data = taskData;
+
+   function createTable(name,value) {
+    let row = document.createElement("tr")
+    // Create cells
+    let cell1 = document.createElement("td")
+    let cell2 = document.createElement("td")
+    // Insert data to cells
+    cell1.innerText = name
+    //cell2.innerText = value
+    cell2.innerHTML = `<json-viewer>${value}</json-viewer>`
+
+    // Append cells to row
+    row.appendChild(cell1);
+    row.appendChild(cell2);
+    
+    var factsTable = document.getElementById("facts-table-body")
+    console.log(factsTable)
+    
+    // Append row to table body
+    factsTable.appendChild(row)
+   }
+
+   taskData.forEach(function (item, index) {
+      console.log(item)
+      createTable(item["name"], item["value"])
+   });
+
+</script>

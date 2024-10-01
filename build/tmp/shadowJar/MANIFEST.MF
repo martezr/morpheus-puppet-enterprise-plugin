@@ -1,0 +1,14 @@
+Manifest-Version: 1.0
+Plugin-Class: com.morpheusdata.puppetenterprise.PuppetEnterprisePlugin
+Plugin-Version: 0.1.0
+Morpheus-Name: Puppet Enterprise Plugin
+Morpheus-Organization: morpheus
+Morpheus-Code: morpheus-puppet-enterprise-plugin
+Morpheus-Description: TODO: Fill in the Plugin Description
+Morpheus-Logo: assets/morpheus.svg
+Morpheus-Logo-Dark: assets/morpheus.svg
+Morpheus-Labels: Plugin
+Morpheus-Repo: https://github.com/martezr/morpheus-puppet-enterprise-plu
+ gin
+Morpheus-Min-Appliance-Version: 7.0.0
+
