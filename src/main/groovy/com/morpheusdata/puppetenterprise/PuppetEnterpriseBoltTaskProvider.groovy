@@ -118,6 +118,7 @@ class PuppetEnterpriseBoltTaskProvider implements TaskProvider {
 			code: 'boltTaskParams',
 			fieldName: 'boltTaskParams',
 			displayOrder: 2,
+			defaultValue: '{}',
 			fieldLabel: 'Bolt Task Parameters',
 			required: true,
 			inputType : OptionType.InputType.CODE_EDITOR,

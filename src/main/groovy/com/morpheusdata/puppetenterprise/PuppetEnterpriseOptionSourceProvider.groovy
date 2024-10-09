@@ -51,95 +51,83 @@ class PuppetEnterpriseOptionSourceProvider extends AbstractOptionSourceProvider 
 
 	@Override
 	List<String> getMethodNames() {
-		return new ArrayList<String>(['puppetEnterpriseAcountIntegrations','puppetEnterpriseNodeGroups','puppetEnterpriseBoltTasks','puppetEnterpriseBoltPlans','puppetEnterpriseBoltTimeoutCheck'])
+		return new ArrayList<String>(['puppetEnterpriseAcountIntegrations','puppetEnterpriseNodeGroups','puppetEnterpriseBoltTasks','puppetEnterpriseBoltPlans','puppetEnterpriseBoltTimeoutCheck','puppetEnterpriseTagActions'])
 	}
 
 	def puppetEnterpriseAcountIntegrations(args){
-        log.info "OP ARG: ${args}"
 		def integrations = morpheusContext.async.accountIntegration.list(new DataQuery().withFilter('type', 'puppet-enterprise-integration')).toList().blockingGet()
-        log.info "Integrations: ${integrations}"
         def output = []
         for(integration in integrations){
-            def test = [:]
-            test["name"] = integration.name
-            test["value"] = integration.name
-            output << test
+            def dataMap = [:]
+            dataMap["name"] = integration.name
+            dataMap["value"] = integration.name
+            output << dataMap
         }
 		return output
 	}
 
 	def puppetEnterpriseNodeGroups(args){
-        log.info "WORKFLOW TEMPLATE ARGs: ${args}"
 		def integrationName = args["config"]["peIntegration"]
-		log.info "INTEGRATION PE SERVER ${integrationName}"
-
-		return [
-				[name: 'All Nodes', value: 'all nodes'],
-				[name: 'PE Infrastructure', value: 'pe infrastructure'],
-				[name: 'PE Patch Management', value: 'sso']
-		]
-	}
-
-	def puppetEnterpriseBoltTimeoutCheck(input){
-		return [
-				[name: 'Yes', value: 'yes'],
-				[name: 'No', value: 'no']
-		]
+		def rtn = []
+		def integrations = morpheusContext.async.accountIntegration.list(new DataQuery().withFilters(new DataFilter("type", "puppet-enterprise-integration"), new DataFilter("name", integrationName))).toList().blockingGet()
+		// Handle an empty integration selection
+		if (integrations.size > 0){
+			def integrationId = integrations[0].id
+			List<com.morpheusdata.model.ReferenceData> peReferenceData = morpheusContext.referenceData.list(new DataQuery().withFilter("code", "puppetenterprise.nodegroups.${integrationId}")).toList().blockingGet()
+			peReferenceData.each { alrd ->
+				def rd = morpheusContext.referenceData.get(alrd.id)?.blockingGet()
+				if ( rd.config != null && !rd.config.isEmpty() ) {
+					JsonSlurper slurper = new JsonSlurper()
+					def json = slurper.parseText(rd.config)
+					for (group in json.groups){
+						def dataMap = [:]
+						dataMap["name"] = group
+						dataMap["value"] = group
+						rtn << dataMap
+					}
+				}
+			}
+		}
+		return rtn
 	}
 
 	def puppetEnterpriseBoltTasks(input){
 		def params = [Object[]].any { it.isAssignableFrom(input.getClass()) } ? input.first() : input
-		log.info "BOLT TASK ARGs: ${params}"
 		def rtn = []
 		if (params.task?.taskOptions) {
-			log.info params.task.taskOptions.puppetEnterpriseIntegration
 			def integrationName = params.task.taskOptions.puppetEnterpriseIntegration
 			def integrations = morpheusContext.async.accountIntegration.list(new DataQuery().withFilters(new DataFilter("type", "puppet-enterprise-integration"), new DataFilter("name", integrationName))).toList().blockingGet()
 			def integrationId = integrations[0].id
-			log.info "BINTS: ${integrations[0]}"
 			List<com.morpheusdata.model.ReferenceData> peReferenceData = morpheusContext.referenceData.list(new DataQuery().withFilter("code", "puppetenterprise.bolt.tasks.${integrationId}")).toList().blockingGet()
 			def tasks = []
 
 			peReferenceData.each { alrd ->
 				def rd = morpheusContext.referenceData.get(alrd.id)?.blockingGet()
-				log.info "Config ${rd}"
-				log.info "Integration: ${rd.config}"
 				if ( rd.config != null && !rd.config.isEmpty() ) {
 					JsonSlurper slurper = new JsonSlurper()
 					def json = slurper.parseText(rd.config)
-					log.info "JSON PAYLOAD: ${json}"
 					for (task in json.tasks){
-						def bt = [:]
-						bt["name"] = task
-						bt["value"] = task
-						tasks << bt
+						def dataMap = [:]
+						dataMap["name"] = task
+						dataMap["value"] = task
+						tasks << dataMap
 					}
 				} else {
-					def bt = [:]
-					bt["name"] = rd.value
-					bt["value"] = rd.value
-					tasks << bt
+					def dataMap = [:]
+					dataMap["name"] = rd.value
+					dataMap["value"] = rd.value
+					tasks << dataMap
 				}
 			}
-
 			return tasks
 		}
-		return [
-				[name: 'server', value: 'server'],
-				[name: 'client', value: 'client'],
-				[name: 'sso', value: 'sso']
-		]
-
+		return rtn
 	}
 
-
 	def puppetEnterpriseBoltPlans(input){
-		log.info "BOLT Plan inputs: ${input}"
 		def params = [Object[]].any { it.isAssignableFrom(input.getClass()) } ? input.first() : input
-		log.info "BOLT Plan ARGs: ${params}"
 		def rtn = []
 		if (params.task?.taskOptions) {
-			log.info params.task.taskOptions.puppetEnterpriseIntegrationBoltPlans
 			def integrationName = params.task.taskOptions.puppetEnterpriseIntegrationBoltPlans
 			def integrations = morpheusContext.async.accountIntegration.list(new DataQuery().withFilters(new DataFilter("type", "puppet-enterprise-integration"), new DataFilter("name", integrationName))).toList().blockingGet()
 			def integrationId = integrations[0].id
@@ -148,29 +136,31 @@ class PuppetEnterpriseOptionSourceProvider extends AbstractOptionSourceProvider 
 
 			peReferenceData.each { alrd ->
 				def rd = morpheusContext.referenceData.get(alrd.id)?.blockingGet()
-				log.info "Config ${rd}"
-				log.info "Integration: ${rd.config}"
 				if ( rd.config != null && !rd.config.isEmpty() ) {
 					JsonSlurper slurper = new JsonSlurper()
 					def json = slurper.parseText(rd.config)
-					log.info "JSON PAYLOAD: ${json}"
 					for (plan in json.plans){
-						def bt = [:]
-						bt["name"] = plan
-						bt["value"] = plan
-						plans << bt
+						def dataMap = [:]
+						dataMap["name"] = plan
+						dataMap["value"] = plan
+						plans << dataMap
 					}
 				} else {
-					def bt = [:]
-					bt["name"] = rd.value
-					bt["value"] = rd.value
-					plans << bt
+					def dataMap = [:]
+					dataMap["name"] = rd.value
+					dataMap["value"] = rd.value
+					plans << dataMap
 				}
 			}
-
 			return plans
 		}
 		return rtn
+	}
 
+	def puppetEnterpriseTagActions(input){
+		return [
+				[name: 'Add', value: 'add'],
+				[name: 'Remove', value: 'remove']
+		]
 	}
 }

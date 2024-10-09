@@ -59,12 +59,8 @@
 					   aria-expanded="false">Nodes</a>
 				</li>
 				<li role="presentation" class="">
-					<a href="#puppet-enterprise-bolt-tasks" aria-controls="aci-tenant-records" role="tab" data-toggle="tab"
-					   aria-expanded="false">Tasks</a>
-				</li>
-				<li role="presentation" class="">
-					<a href="#puppet-enterprise-bolt-plans" aria-controls="aci-tenant-records" role="tab" data-toggle="tab"
-					   aria-expanded="false">Plans</a>
+					<a href="#puppet-enterprise-bolt-automation" aria-controls="aci-tenant-records" role="tab" data-toggle="tab"
+					   aria-expanded="false">Automation</a>
 				</li>
 			</ul>
 			<!-- Tab panes -->
@@ -170,94 +166,9 @@
 						</div>
 					</div>
 				</div>
-				<div role="tabpanel" class="tab-pane" id="puppet-enterprise-bolt-tasks">
+				<div role="tabpanel" class="tab-pane" id="puppet-enterprise-bolt-automation">
 					<div class="title-container clearfix">
-						<h2 class="pull-left title">Tasks</h2>
-					</div>
-					<div class="aci-tenant-record-search">
-						<form action="/integration/aci/31/tenants" method="get" role="form"
-							  class="form-inline aci-tenant-record-search-form">
-							<div class="input-group searchBar">
-								<input type="text" class="form-control form-submit-on-change aci-phrase" name="phrase"
-									   value="" placeholder="Search" id="phrase">
-								<span class="input-group-btn">
-									<button class="btn btn-primary search-btn" type="button"><span
-											class="glyphicon glyphicon-search"></span></button>
-								</span>
-							</div>
-							<!--actions-->
-							<input type="hidden" name="_csrf" value="2066026a-b673-46f6-bbf0-773d8e3a4514">
-						</form>
-						<hr>
-					</div>
-					<div class="aci-tenant-record-list">
-						<div class="aci-tenant-data" data-integration-id="150" data-replace="true" data-offset=""
-							 data-max="" data-phrase="" data-sort="" data-direction="">
-							<table class="table table-mid hidden-xs">
-								<thead>
-								<tr>
-									<th style="width:80px;">Status</th>
-									<th>Name</th>
-									<th>Description</th>
-									<th>Dn</th>
-									<th>UID</th>
-									<th style="width:100px;"></th>
-								</tr>
-								</thead>
-								<tbody>
-
-								<tr>
-									<td class="status status-indent"><span class="statusIcon status-provisioned "
-																		   title="ok"></span></td>
-									<td>AMS-ACI-DEVNET</td>
-									<td></td>
-									<td>uni/tn-AMS-ACI-DEVNET</td>
-									<td>15374</td>
-									<td align="right" class="actions">
-
-										<a href="/integration/aci/31/tenant/24637" data-method="delete"
-										   data-remote="true" title="Delete ACI Tenant"
-										   data-confirm="Are you sure you want to remove this ACI tenant from the APIC?"
-										   class="btn btn-sm btn-link btn-link-icon tenant-record-delete">
-											<span class="btn-icon btn-icon-trashcan"></span>
-										</a>
-
-									</td>
-								</tr>
-
-								<tr>
-									<td class="status status-indent"><span class="statusIcon status-provisioned "
-																		   title="ok"></span></td>
-									<td>bk_10018</td>
-									<td>Tenant Created Using Ansible</td>
-									<td>uni/tn-bk_10018</td>
-									<td>15374</td>
-									<td align="right" class="actions">
-
-										<a href="/integration/aci/31/tenant/24666" data-method="delete"
-										   data-remote="true" title="Delete ACI Tenant"
-										   data-confirm="Are you sure you want to remove this ACI tenant from the APIC?"
-										   class="btn btn-sm btn-link btn-link-icon tenant-record-delete">
-											<span class="btn-icon btn-icon-trashcan"></span>
-										</a>
-
-									</td>
-								</tr>
-								</tbody>
-							</table>
-							<div class="morpheus-paging">
-								<span class="currentStep">1</span><a
-									href="/integration/aci/31/tenants?sort=&amp;direction=&amp;phrase=&amp;offset=25&amp;max=25"
-									class="step">2</a><a
-									href="/integration/aci/31/tenants?sort=&amp;direction=&amp;phrase=&amp;offset=25&amp;max=25"
-									class="nextLink">»</a>
-							</div>
-						</div>
-					</div>
-				</div>
-				<div role="tabpanel" class="tab-pane" id="puppet-enterprise-bolt-plans">
-					<div class="title-container clearfix">
-						<h2 class="pull-left title">Plans</h2>
+						<h2 class="pull-left title">Automation</h2>
 					</div>
 					<div class="aci-tenant-record-search">
 						<form action="/integration/aci/31/tenants" method="get" role="form"
@@ -282,12 +193,14 @@
 								<thead>
 								<tr>
 									<th>Name</th>
+									<th>Type</th>
 								</tr>
 								</thead>
 								<tbody>
-									{{#each plans}}
+									{{#each automation}}
 										<tr>
 											<td>{{name}}</td>
+											<td>{{type}}</td>
 										</tr>
 									{{/each}}
 								</tbody>

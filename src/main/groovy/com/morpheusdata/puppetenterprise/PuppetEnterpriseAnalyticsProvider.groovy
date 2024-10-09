@@ -100,7 +100,7 @@ class PuppetEnterpriseAnalyticsProvider extends AbstractAnalyticsProvider{
 	 * @return the display order starting from 0 as highest priority
 	 */
 	Integer getDisplayOrder() {
-		return 5;
+		return 0;
 	}
 
 
@@ -114,9 +114,9 @@ class PuppetEnterpriseAnalyticsProvider extends AbstractAnalyticsProvider{
 		def response = new ServiceResponse()
 		log.info "ANALYTICS DATA PARAMS: ${params}"
 		LinkedHashMap<String, Object> rtn = new LinkedHashMap<>();
-		rtn["test"] = Math.random()
+		def ml = [[id:9, status:"Stopped", user:"admin", nodes: 2], [id:8, status:"Stopped", user:"admin", nodes: 5]]
+		rtn["jobs"] = ml
 		response["data"] = rtn
-		response["content"] = "<p>test</p>"
 		return ServiceResponse.success(rtn)
 	}
 

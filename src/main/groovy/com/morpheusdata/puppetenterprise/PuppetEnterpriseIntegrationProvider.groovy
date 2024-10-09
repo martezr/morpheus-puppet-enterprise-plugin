@@ -71,35 +71,6 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 
 	@Override
 	void refresh(AccountIntegration accountIntegration) {
-		log.info "Puppet Enterprise Guidance Recommendations"
-		log.info("Running Puppet Enterprise Checks")
-        List<AccountDiscovery> discoveriesToAdd = []
-        AccountDiscovery discovery = new AccountDiscovery()
-        discovery.type = new AccountDiscoveryType()
-		discovery.type.code = "puppet-enterprise-guidance"
-		discovery.type.name = "Puppet Enterprise"
-		discovery.type.canExecute = true
-		discovery.type.title = "PE Drift Detection"
-        discovery.refType = "computeServer"
-        discovery.refId = 1
-        discovery.refName = "modemom01"
-		discovery.savings = 0.00
-        //discovery.configMap = [agentVersion:computeServer.serverOs?.platform == PlatformType.windows ? latestWindowsAgentVersion : latestLinuxAgentVersion]
-        discovery.severity = "info"
-        discovery.actionTitle = "puppet"
-        discovery.actionType = "puppet"
-        discovery.actionCategory = "agent"
-        discovery.actionMessage = "Upgrade Agent to latest version"
-        discovery.dateCreated = new Date()
-        discovery.lastUpdated = new Date()
-        discovery.accountId = 1
-        discovery.userId = 1
-        discovery.zoneId = 1
-        discovery.siteId = 4
-
-        discoveriesToAdd.add(discovery)
-        morpheusContext.services.discovery.bulkCreate(discoveriesToAdd)
-
 		log.info "Starting sync for Puppet Enterprise integration"
 
 		// Parse integration JSON payload
@@ -114,6 +85,8 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 		def puppetDbPort = integrationJson.cm.plugin.puppetdbPort
 		def peNodeClassifierPort = integrationJson.cm.plugin.peNodeClassifierPort
 		def useCache = integrationJson.cm.plugin.peDataCache
+		def peDataCacheHost = integrationJson.cm.plugin.peDataCacheHost
+		def peDataCachePort = integrationJson.cm.plugin.peDataCachePort
 
 		// Set HTTP client settings for authenticating to Puppet Enterprise
 		HttpApiClient client = new HttpApiClient()
@@ -121,45 +94,45 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 		def account = accountIntegration.account
 
 		// Sync Puppet Bolt Tasks
+		log.info "Syncing puppet enterprise bolt tasks"
 		def results = client.callJsonApi("${serviceUrl}:${orchestratorPort}", "orchestrator/v1/tasks", "", "", requestOptions, 'GET')
 		def boltTasks = results.data.items
 		def tasks = []
-		def adds = []
-		log.info "BOLT TASK RESULTS ${results}"
+		def taskAdds = []
 		for(task in boltTasks){
 			tasks << task["name"]
 		}
+		/// Create JSON payload for tasks
 		def configPayload = [:]
 		configPayload["tasks"] = tasks
 		def configOutput = JsonOutput.toJson(configPayload)
-		def regionMatch = morpheusContext.async.referenceData.find(new DataQuery().withFilters([
+		def tasksMatch = morpheusContext.async.referenceData.find(new DataQuery().withFilters([
 				new DataFilter('code', "puppetenterprise.bolt.tasks.${accountIntegration.id}"),
 		])).blockingGet()
 		// Check if there's an existing ref data entry
-		if (regionMatch){
-			regionMatch.config = configOutput
-			morpheusContext.referenceData.create(regionMatch).blockingGet()
+		if (tasksMatch){
+			tasksMatch.config = configOutput
+			morpheusContext.async.referenceData.save(tasksMatch).blockingGet()
 		} else {		
 			def variableConfig = [account:account, 
-				code: "puppetenterprise.bolt.tasks.${accountIntegration.id}", 
-				category:"puppetenterprise", 
-				keyValue: "bolt-tasks", 
-				description: "puppet enterprise tasks",
-				name: "bolt-tasks", 
-				value: "bolt-tasks", 
-				refType: 'AccountIntegration',
-				type: 'string', 
-				refId: accountIntegration.id,
-				config: configOutput
+					code: "puppetenterprise.bolt.tasks.${accountIntegration.id}", 
+					category:"puppetenterprise", 
+					keyValue: "bolt-tasks", 
+					description: "puppet enterprise tasks",
+					name: "bolt-tasks", 
+					value: "bolt-tasks", 
+					refType: 'AccountIntegration',
+					type: 'string', 
+					refId: accountIntegration.id,
+					config: configOutput
 				]
 			def add = new ReferenceData(variableConfig)
-			adds << add
-			morpheusContext.referenceData.create(adds).blockingGet()
+			taskAdds << add
+			morpheusContext.referenceData.create(taskAdds).blockingGet()
 		}
 
-
 		// Sync Puppet Bolt Plans
-		log.info "Sync Puppet Bolt Plans"
+		log.info "Syncing puppet enterprise bolt plans"
 		def planResults = client.callJsonApi("${serviceUrl}:${orchestratorPort}", "orchestrator/v1/plans", "", "", requestOptions, 'GET')
 		def boltPlans = planResults.data.items
 		def plans = []
@@ -177,7 +150,7 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 		// Check if there's an existing ref data entry
 		if (plansMatch){
 			plansMatch.config = plansConfigOutput
-			morpheusContext.referenceData.create(plansMatch).blockingGet()
+			morpheusContext.async.referenceData.save(plansMatch).blockingGet()
 		} else {		
 			def planVariableConfig = [account:account, 
 				code: "puppetenterprise.bolt.plans.${accountIntegration.id}", 
@@ -197,32 +170,33 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 		}
 
 		// Sync Puppet Nodes
+		log.info "Syncing puppet enterprise nodes"
 		def nodeResults = client.callJsonApi("${serviceUrl}:${puppetDbPort}", "pdb/query/v4/nodes", "", "", requestOptions, 'GET')
 		def nodes = nodeResults.data
 		def nodeAdds = []
 		def nodesConfigPayload = [:]
 		nodesConfigPayload["nodes"] = nodes
 		def nodesConfigOutput = JsonOutput.toJson(nodesConfigPayload)
-		log.info "PE NODES DATA: ${nodesConfigOutput}"
 		def nodesMatch = morpheusContext.async.referenceData.find(new DataQuery().withFilters([
 				new DataFilter('code', "puppetenterprise.nodes.${accountIntegration.id}"),
 		])).blockingGet()
 		// Check if there's an existing ref data entry
 		if (nodesMatch){
 			nodesMatch.config = nodesConfigOutput
-			morpheusContext.referenceData.create(nodesMatch).blockingGet()
+			morpheusContext.async.referenceData.save(nodesMatch).blockingGet()
 		} else {		
-			def nodeVariableConfig = [account:account, 
-				code: "puppetenterprise.nodes.${accountIntegration.id}", 
-				category:"puppetenterprise", 
-				keyValue: "nodes", 
-				description: "puppet enterprise nodes",
-				name: "nodes", 
-				value: "nodes", 
-				refType: 'AccountIntegration',
-				type: 'string', 
-				refId: accountIntegration.id,
-				config: nodesConfigOutput
+			def nodeVariableConfig = [
+					account:account, 
+					code: "puppetenterprise.nodes.${accountIntegration.id}", 
+					category:"puppetenterprise", 
+					keyValue: "nodes", 
+					description: "puppet enterprise nodes",
+					name: "nodes", 
+					value: "nodes", 
+					refType: 'AccountIntegration',
+					type: 'string', 
+					refId: accountIntegration.id,
+					config: nodesConfigOutput
 				]
 			def nodeAdd = new ReferenceData(nodeVariableConfig)
 			nodeAdds << nodeAdd
@@ -230,22 +204,46 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 		}
 
 		// Sync Puppet Node Groups
+		log.info "Syncing puppet enterprise node groups"
 		def nodeGroupResults = client.callJsonApi("${serviceUrl}:${peNodeClassifierPort}", "classifier-api/v1/groups", "", "", requestOptions, 'GET')
 		def nodeGroups = nodeGroupResults.data
-		log.info "PE NODE GROUPS DATA: ${nodeGroups}"
-		/*
-		def nodeGroupsData = []
-		def nodeGroupAdds = []
+		def groups = []
+		def groupAdds = []
 
 		for(nodeGroup in nodeGroups){
-			nodeGroupsData << nodeGroups["name"]
+			groups << nodeGroup["name"]
 		}
-		def plansConfigPayload = [:]
-		plansConfigPayload["plans"] = plans
-		def plansConfigOutput = JsonOutput.toJson(plansConfigPayload)
-*/
+		def nodeGroupsConfigPayload = [:]
+		nodeGroupsConfigPayload["groups"] = groups
+		def nodeGroupsConfigOutput = JsonOutput.toJson(nodeGroupsConfigPayload)
+		def nodeGroupsMatch = morpheusContext.async.referenceData.find(new DataQuery().withFilters([
+				new DataFilter('code', "puppetenterprise.nodegroups.${accountIntegration.id}"),
+		])).blockingGet()
+		// Check if there's an existing ref data entry
+		if (nodeGroupsMatch){
+			nodeGroupsMatch.config = nodeGroupsConfigOutput
+			morpheusContext.async.referenceData.save(nodeGroupsMatch).blockingGet()
+		} else {		
+			def nodeGroupVariableConfig = [account:account, 
+				code: "puppetenterprise.nodegroups.${accountIntegration.id}", 
+				category:"puppetenterprise", 
+				keyValue: "node-groups", 
+				description: "puppet enterprise node groups",
+				name: "node-groups", 
+				value: "node-groups", 
+				refType: 'AccountIntegration',
+				type: 'string', 
+				refId: accountIntegration.id,
+				config: nodeGroupsConfigOutput
+				]
+			def nodeGroupAdd = new ReferenceData(nodeGroupVariableConfig)
+			groupAdds << nodeGroupAdd
+			morpheusContext.referenceData.create(groupAdds).blockingGet()
+		}
+
 		// Sync PE Services Status
-		def serviceStatusResults = client.callJsonApi("${serviceUrl}:4433", "status/v1/services", "", "", requestOptions, 'GET')
+		log.info "Syncing puppet enterprise service status"
+		def serviceStatusResults = client.callJsonApi("${serviceUrl}:${peNodeClassifierPort}", "status/v1/services", "", "", requestOptions, 'GET')
 		def status = serviceStatusResults.data
 		def statusAdds = []
 		def statusConfigOutput = JsonOutput.toJson(status)
@@ -255,7 +253,7 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 		// Check if there's an existing ref data entry
 		if (statusMatch){
 			statusMatch.config = statusConfigOutput
-			morpheusContext.referenceData.create(statusMatch).blockingGet()
+			morpheusContext.async.referenceData.save(statusMatch).blockingGet()
 		} else {		
 			def statusVariableConfig = [account:account, 
 				code: "puppetenterprise.status.${accountIntegration.id}", 
@@ -274,79 +272,61 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 			morpheusContext.referenceData.create(statusAdds).blockingGet()
 		}
 
-
 		if (useCache) {
 			// Add redis connection for data caching
-			JedisPooled jedis = new JedisPooled("localhost", 6379);
+			JedisPooled jedis = new JedisPooled(peDataCacheHost, 6379);
 			// Sync Puppet Facts
 			def factsResults = client.callJsonApi("${serviceUrl}:${puppetDbPort}", "pdb/query/v4/inventory", "", "", requestOptions, 'GET')
 			def facts = factsResults.data
 			def factsAdds = []
 			def factsConfigOutput = JsonOutput.toJson(facts)
-			def instances = morpheusContext.async.instance.list().toList().blockingGet()
-			for (instance in instances){
+
+			def instancesMatch = morpheusContext.async.referenceData.list(new DataQuery().withFilters([
+					new DataFilter('refType', "Instance"),
+					new DataFilter('name', "instance-tab-ui")
+			])).toList().blockingGet()
+
+			instancesMatch.each { alrd ->
+				def rd = morpheusContext.referenceData.get(alrd.id)?.blockingGet()
 				def factsInfo = ""
 				for (node in facts){
-					def certname = "${instance.name}.grt.local"
-					if (node.certname == certname){
+					log.info "Found Node ${rd.keyValue}"
+					if (node.certname == rd.keyValue){
 						factsInfo = node.facts
 					}
 				}
 				def instjson = JsonOutput.toJson(factsInfo)
-				jedis.set(instance.name, instjson);
+				jedis.set(rd.keyValue, instjson);
 			}
 		}
 
-
-		/*
-		def factsMatch = morpheusContext.async.referenceData.find(new DataQuery().withFilters([
-				new DataFilter('code', "puppetenterprise.facts.${accountIntegration.id}"),
-		])).blockingGet()
-		// Check if there's an existing ref data entry
-		if (nodesMatch){
-			nodesMatch.config = nodesConfigOutput
-			morpheusContext.referenceData.create(nodesMatch).blockingGet()
-		} else {		
-			def nodeVariableConfig = [account:account, 
-				code: "puppetenterprise.nodes.${accountIntegration.id}", 
-				category:"puppetenterprise", 
-				keyValue: "nodes", 
-				description: "puppet enterprise nodes",
-				name: "nodes", 
-				value: "nodes", 
-				refType: 'AccountIntegration',
-				type: 'string', 
-				refId: accountIntegration.id,
-				config: nodesConfigOutput
+		// Alarms
+		for (node in nodes){
+			// Evaluate if the status warrants an alarm
+			if (node.latest_report_status != "unchanged"){
+				def alarmadds = []
+				def alarmConfig = [
+					account:			account,
+					category:			"integration",
+					name:				"Puppet Enterprise: The instance configuration is out of sync - ${node.latest_report_status}",
+					eventKey:			"PE Drift",
+					acknowledged:		false,
+					acknowledgedDate:	null,
+					acknowledgedByUser: null,
+					status:				"warning",
+					statusMessage:		"Drifted",
+					resourceName:		"${node.certname}",
+					refType:			"computeServer",
+					refId: 				1,
+					startDate:			new Date()
 				]
-			def nodeAdd = new ReferenceData(nodeVariableConfig)
-			nodeAdds << nodeAdd
-			morpheusContext.referenceData.create(nodeAdds).blockingGet()
-		}*/
-
-		/*
-		def alarmadds = []
-		String zoneCategory = "puppetenterprise.drift.alarm"
-		Date date = new Date(); 
-		def alarmConfig = [account:account, category:zoneCategory, name:"Puppet Enterprise Drift",
-			   eventKey:"PE Drift", externalId:817,
-			   acknowledged:false,
-			   acknowledgedDate:null, acknowledgedByUser:null,
-			   status:"warning", statusMessage:"Drifted",
-			   resourceName:"grtpe01.grt.local", refType:'instance', refId: 817,
-			   uniqueId:817,startDate:date]
-		def alarmadd = new OperationNotification(alarmConfig)
-		alarmadds << alarmadd
-		if(alarmadds) {
-			morpheusContext.async.operationNotification.create(alarmadds).blockingGet()
+				def alarmadd = new OperationNotification(alarmConfig)
+				alarmadds << alarmadd
+				if(alarmadds) {
+					morpheusContext.async.operationNotification.create(alarmadds).blockingGet()
+				}
+			}
 		}
-		*/
-
-		accountIntegration.setServiceConfig("Testinstuff, sync complete")
-		morpheus.async.accountIntegration.save(accountIntegration).subscribe().dispose()
-		sleep(3000)
-
-		log.debug "daily refresh run for ${accountIntegration}"
 	}
 
 	@Override
@@ -355,8 +335,6 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 			name: 'Puppet Enterprise API Endpoint',
 			code: 'puppet-enterprise-api',
 			fieldName: 'serviceUrl',
-			placeHolder: 'https://demope01.test.local',
-			defaultValue: 'https://grtpe01.grt.local',
 			helpText: 'Warning! Using HTTP URLS are insecure and not recommended.',
 			displayOrder: 0,
 			fieldLabel: 'URL',
@@ -372,12 +350,35 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 			fieldLabel: 'Ignore Verify SSL Certificate',
 			inputType: OptionType.InputType.CHECKBOX
 		)
+        OptionType credentials = new OptionType(
+			name: 'Credentials',
+			code: 'puppetenterprise.credentials',
+			inputType: OptionType.InputType.CREDENTIAL,
+			fieldName: 'type',
+			fieldLabel: 'Credentials',
+			fieldContext: 'credential',
+			required: true,
+			defaultValue: 'local',
+			optionSource: 'credentials',
+			displayOrder: 2,
+			config: '{"credentialTypes":["api-key"]}'
+		)
+		OptionType apiPassword = new OptionType(
+			name: 'Puppet Enterprise Access Token',
+			code: 'puppet-enterprise-access-token',
+			fieldName: 'serviceToken',
+			displayOrder: 3,
+			fieldLabel: 'Access Token',
+			required: true,
+			localCredential: true,
+			inputType: OptionType.InputType.PASSWORD
+		)
 		OptionType puppetDbPort = new OptionType(
 			name: 'Puppet Enterprise PuppetDB Port',
 			code: 'puppet-enterprise-puppetdb-port',
 			fieldName: 'puppetdbPort',
 			defaultValue: '8081',
-			displayOrder: 2,
+			displayOrder: 4,
 			fieldLabel: 'PuppetDB Port',
 			inputType: OptionType.InputType.TEXT
 		)
@@ -386,7 +387,7 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 			code: 'puppet-enterprise-orchestrator-port',
 			fieldName: 'peOrchestratorPort',
 			defaultValue: '8143',
-			displayOrder: 3,
+			displayOrder: 5,
 			fieldLabel: 'Orchestrator Port',
 			inputType: OptionType.InputType.TEXT
 		)
@@ -395,25 +396,15 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 			code: 'puppet-enterprise-node-classifier-port',
 			fieldName: 'peNodeClassifierPort',
 			defaultValue: '4433',
-			displayOrder: 4,
+			displayOrder: 6,
 			fieldLabel: 'Node Classifier Port',
 			inputType: OptionType.InputType.TEXT
-		)
-		OptionType apiPassword = new OptionType(
-			name: 'Puppet Enterprise Access Token',
-			code: 'puppet-enterprise-access-token',
-			fieldName: 'serviceToken',
-			displayOrder: 5,
-			defaultValue: 'ANh0f7LhH3fL86MbdiJJe0-MkHwGNR2Syn0bTX2F7HK1',
-			fieldLabel: 'Access Token',
-			required: true,
-			inputType: OptionType.InputType.PASSWORD
 		)
 		OptionType controlRepository = new OptionType(
 			name: 'Puppet Enterprise Control Repository',
 			code: 'puppet-enterprise-control-repository',
 			fieldName: 'controlRepository',
-			displayOrder: 6,
+			displayOrder: 7,
 			fieldLabel: 'Control Repository URL',
 			required: false,
 			inputType: OptionType.InputType.TEXT
@@ -424,7 +415,7 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 			fieldName: 'peDataCache',
 			fieldGroup: 'Cache Settings',
 			helpText: 'Use a Redis caching server to improve data fetching performance for UI components',
-			displayOrder: 7,
+			displayOrder: 8,
 			fieldLabel: 'Use Cache',
 			defaultValue: 'off',
 			required: false,
@@ -435,7 +426,7 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 			code: 'puppet-enterprise-data-cache-host',
 			fieldName: 'peDataCacheHost',
 			fieldGroup: 'Cache Settings',
-			displayOrder: 8,
+			displayOrder: 9,
 			defaultValue: 'localhost',
 			fieldLabel: 'Cache Host',
 			required: false,
@@ -447,23 +438,18 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 			fieldName: 'peDataCachePort',
 			fieldGroup: 'Cache Settings',
 			defaultValue: '6379',
-			displayOrder: 9,
+			displayOrder: 10,
 			fieldLabel: 'Cache Port',
 			required: false,
 			inputType: OptionType.InputType.TEXT
 		)
-		return [apiUrl, ignoreVerifySSL, puppetDbPort, peOrchestratorPort, peNodeClassifierPort, apiPassword, controlRepository, useCache, cacheHost, cachePort]
+		return [apiUrl, ignoreVerifySSL, credentials, puppetDbPort, peOrchestratorPort, peNodeClassifierPort, apiPassword, controlRepository, useCache, cacheHost, cachePort]
 	}
 
 	@Override
 	HTMLResponse renderTemplate(AccountIntegration integration) {
-
 		// Define an object for storing the data retrieved from the Puppet Enterprise REST API
 		def HashMap<String, String> puppetEnterprisePayload = new HashMap<String, String>();
-
-		// Add webnonce to use JavaScript in the rendered template
-		def webnonce = morpheus.getWebRequest().getNonceToken()
-		puppetEnterprisePayload.put("webnonce",webnonce)
 
 		// Parse the integration configuration
 		JsonSlurper slurper = new JsonSlurper()
@@ -493,7 +479,6 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 		def peversion = ""
 		if (out["pe-console"] != null){
 			peversion = out["pe-console"]["service_version"]
-			log.info "SERVICD DATAUS: ${peversion}"
 		}
 
 		// Evaluate whether the Puppet control repository setting for the
@@ -529,32 +514,44 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 			}
 		}
 
+		// Fetch Bolt Tasks and Plans
+		def automationItems = []
+
 		List<com.morpheusdata.model.ReferenceData> plansReferenceData = morpheusContext.referenceData.list(new DataQuery().withFilter("code", "puppetenterprise.bolt.plans.${integration.id}")).toList().blockingGet()
-		log.info "PLANS REF DATA ${plansReferenceData}"
-		def plans = []
 		plansReferenceData.each { alrd ->
 			def rd = morpheusContext.referenceData.get(alrd.id)?.blockingGet()
-			log.info "Config ${rd}"
-			log.info "Integration: ${rd.config}"
 			if ( rd.config != null && !rd.config.isEmpty() ) {
-				//JsonSlurper slurper = new JsonSlurper()
 				def plansjson = slurper.parseText(rd.config)
-				log.info "JSON PAYLOAD: ${plansjson}"
 				for (plan in plansjson.plans){
 					def bt = [:]
 					bt["name"] = plan
-					bt["value"] = plan
-					plans << bt
+					bt["type"] = "plan"
+					automationItems << bt
 				}
-			} else {
-				def bt = [:]
-				bt["name"] = rd.value
-				bt["value"] = rd.value
-				plans << bt
 			}
 		}
 
-		puppetEnterprisePayload.put("plans", plans)
+		List<com.morpheusdata.model.ReferenceData> tasksReferenceData = morpheusContext.referenceData.list(new DataQuery().withFilter("code", "puppetenterprise.bolt.tasks.${integration.id}")).toList().blockingGet()
+		tasksReferenceData.each { alrd ->
+			def rd = morpheusContext.referenceData.get(alrd.id)?.blockingGet()
+			if ( rd.config != null && !rd.config.isEmpty() ) {
+				def tasksJson = slurper.parseText(rd.config)
+				for (task in tasksJson.tasks){
+					def bt = [:]
+					bt["name"] = task
+					bt["type"] = "task"
+					automationItems << bt
+				}
+			}
+		}
+
+		def naturallyOrderedMap = automationItems.sort({it1, it2 -> it1.value <=> it1.value})
+		
+		// Add webnonce to use JavaScript in the rendered template
+		def webnonce = morpheus.getWebRequest().getNonceToken()
+		puppetEnterprisePayload.put("webnonce",webnonce)
+
+		puppetEnterprisePayload.put("automation", naturallyOrderedMap)
 		puppetEnterprisePayload.put("pe_server", integrationJson.cm.plugin.serviceUrl)
 		puppetEnterprisePayload.put("pe_version", peversion)
 		puppetEnterprisePayload.put("nodes", nodes)
@@ -573,8 +570,6 @@ class PuppetEnterpriseIntegrationProvider extends AbstractGenericIntegrationProv
 	ContentSecurityPolicy getContentSecurityPolicy() {
 		def csp = new ContentSecurityPolicy()
 		csp.scriptSrc = '*.jsdelivr.net'
-		csp.frameSrc = '*.digitalocean.com'
-		csp.imgSrc = '*.wikimedia.org'
 		csp.styleSrc = '*.jsdelivr.net'
 		csp
 	}

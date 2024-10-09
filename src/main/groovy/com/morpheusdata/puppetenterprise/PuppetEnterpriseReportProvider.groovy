@@ -56,9 +56,16 @@ class PuppetEnterpriseReportProvider extends AbstractReportProvider{
 	@Override
 	void process(ReportResult reportResult) {
 		// Update the status of the report (generating) - https://developer.morpheusdata.com/api/com/morpheusdata/model/ReportResult.Status.html
-		morpheus.report.updateReportResultStatus(reportResult,ReportResult.Status.generating).blockingAwait();
+		morpheus.async.report.updateReportResultStatus(reportResult,ReportResult.Status.generating).blockingAwait();
 		Long displayOrder = 0
 		List<GroovyRowResult> results = []
+
+		Long unchanged = 0
+		Long changed = 0
+		Long above30s = 0
+		Long above5m = 0
+		Long above10m = 0
+		Long above30m = 0
 
 		def integrations = morpheusContext.async.accountIntegration.list(new DataQuery().withFilters(new DataFilter("type", "puppet-enterprise-integration"), new DataFilter("name", reportResult.configMap?.peIntegration))).toList().blockingGet()
 		def integrationName = reportResult.configMap?.peIntegration
@@ -73,7 +80,6 @@ class PuppetEnterpriseReportProvider extends AbstractReportProvider{
 		
         for(integration in integrations){
 			if (integration.name == integrationName){
-				log.info "Integration: ${integration.config}"
 				JsonSlurper slurper = new JsonSlurper()
 				def integrationJson = slurper.parseText(integration.config)
 				accessToken = integrationJson.cm.plugin.serviceToken
@@ -89,25 +95,44 @@ class PuppetEnterpriseReportProvider extends AbstractReportProvider{
         queryPayload["query"] = ["=","latest_report?","true"]
 		HttpApiClient client = new HttpApiClient()
 		HttpApiClient.RequestOptions requestOptions = new HttpApiClient.RequestOptions(headers:['X-Authentication':accessToken,'Content-Type':'application/json'],ignoreSSL: ignoreVerifySSL, body: queryPayload)
-		log.info(serviceUrl)
-		log.info(puppetDbPort)
 		def apiresults = client.callJsonApi("${serviceUrl}:${puppetDbPort}", "pdb/query/v4/reports", "", "", requestOptions, 'POST')
 		def json = apiresults.data
         json.each{
-            log.info("JSON results: ${it}")
+			def status = it.status
+			switch(status) {
+				case "changed":
+					changed++
+					break;
+				case "unchanged":
+					unchanged++
+					break;
+				default:
+				    break;
+			}
+
 			def metricData = it.metrics.data
-			log.info("Metric Data: ${metricData}")
 			def runTime = ""
 			metricData.each{
 				if (it["name"] == "total" && it["category"] == "time"){
-					log.info("Found Value: ${it}")
 					runTime = it["value"]
+					if (runTime<300) { 
+						log.info("GREATER THAN 30S")
+						above30s++
+					} else if (runTime<600) { 
+						log.info("GREATER THAN 5m")
+						above5m++
+					}
 				}
 			}
-            Map<String,Object> data = [name: it.certname, status: it.status, version: it.puppet_version, environment: it.environment, reporttime: it.receive_time, runtime: runTime ]
-            ReportResultRow resultRowRecord = new ReportResultRow(section: ReportResultRow.SECTION_MAIN, displayOrder: displayOrder++, dataMap: data)
-            morpheus.report.appendResultRows(reportResult,[resultRowRecord]).blockingGet()
+			Map<String,Object> data = [name: it.certname, status: it.status, version: it.puppet_version, environment: it.environment, reporttime: it.receive_time, runtime: runTime ]
+			ReportResultRow resultRowRecord = new ReportResultRow(section: ReportResultRow.SECTION_MAIN, displayOrder: displayOrder++, dataMap: data)
+			morpheus.report.appendResultRows(reportResult,[resultRowRecord]).blockingGet()
         }
+
+		Map<String,Object> data = [unchanged: unchanged, changed: changed, above30s: above30s, above5m: above5m ]
+		ReportResultRow resultRowRecord = new ReportResultRow(section: ReportResultRow.SECTION_HEADER, displayOrder: displayOrder++, dataMap: data)
+        morpheus.report.appendResultRows(reportResult,[resultRowRecord]).blockingGet()
+
         morpheus.report.updateReportResultStatus(reportResult,ReportResult.Status.ready).blockingAwait();
 		client.shutdownClient()
 	}
@@ -157,11 +182,12 @@ class PuppetEnterpriseReportProvider extends AbstractReportProvider{
 			name: 'Puppet Enterprise Server', 	
 			inputType: 'SELECT', 
 			optionSource: 'puppetEnterpriseAcountIntegrations', 
-			fieldName: 'peIntegration', 
+			fieldName: 'peIntegration',
+			fieldContext: 'config',
 			fieldLabel: 'Integration',
+			required: true,
 			displayOrder: 0
 		  )
-			
 		  OptionType peNodeGroups = new OptionType(
 			code: 'peNodeGroup', 
 			name: 'Puppet Enterprise Node Groups', 	
@@ -169,6 +195,7 @@ class PuppetEnterpriseReportProvider extends AbstractReportProvider{
 			optionSource: 'puppetEnterpriseNodeGroups', 
 			fieldName: 'peNodeGroup', 
 			fieldLabel: 'Node Group',
+			fieldContext: 'config',
 			dependsOn: 'peIntegration',
 			displayOrder: 1
 		  )
@@ -182,6 +209,10 @@ class PuppetEnterpriseReportProvider extends AbstractReportProvider{
 		def HashMap<String, String> reportPayload = new HashMap<String, String>();
 		def webnonce = morpheus.getWebRequest().getNonceToken()
 		reportPayload.put("webnonce",webnonce)
+		def integrationName = reportResult.configMap?.peIntegration
+		def nodeGroups = reportResult.configMap?.peNodeGroup
+		reportPayload.put("integration",integrationName)
+		reportPayload.put("nodeGroups",nodeGroups)
 		reportPayload.put("reportdata",reportRowsBySection)
 		model.object = reportPayload
 		getRenderer().renderTemplate("hbs/puppetEnterpriseReport", model)

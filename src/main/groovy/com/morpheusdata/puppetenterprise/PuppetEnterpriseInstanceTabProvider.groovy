@@ -2,6 +2,8 @@ package com.morpheusdata.puppetenterprise
 
 import com.morpheusdata.core.AbstractInstanceTabProvider
 import com.morpheusdata.core.MorpheusContext
+import com.morpheusdata.core.data.DataFilter
+import com.morpheusdata.core.data.DataQuery
 import com.morpheusdata.core.Plugin
 import com.morpheusdata.model.Account
 import com.morpheusdata.model.Instance
@@ -49,19 +51,34 @@ class PuppetEnterpriseInstanceTabProvider extends AbstractInstanceTabProvider {
 		def webnonce = morpheus.getWebRequest().getNonceToken()
 		puppetEnterprisePayload.put("webnonce",webnonce)
 
-		JedisPooled jedis = new JedisPooled("localhost", 6379);
-		def facts = jedis.get(instance.name)
-		log.info "IN FACTS: ${facts}"
-		// Check if the returned payload is empty
-		if (!facts?.trim()){
-			log.info "NON EMPTY Payload"
-		} else {
-			log.info "EMPTY PAYLOAD"
+		def instanceMatch = morpheusContext.async.referenceData.find(new DataQuery().withFilters([
+				new DataFilter('refType', "Instance"),
+				new DataFilter('refId', instance.id),
+				new DataFilter('name', "instance-tab-ui")
+		])).blockingGet()
+
+		JsonSlurper slurper = new JsonSlurper()
+		def instanceJson = slurper.parseText(instanceMatch.config)
+		log.info "Integration Data: ${instanceJson}"
+
+		// Fetch integration configuration
+		def integration = morpheusContext.async.accountIntegration.find(new DataQuery().withFilters(new DataFilter("type", "puppet-enterprise-integration"), new DataFilter("name", instanceJson.integration))).blockingGet()
+		def peNodes = morpheusContext.referenceData.find(new DataQuery().withFilter("code", "puppetenterprise.nodes.${integration.id}")).blockingGet()
+
+		log.info "PE NODES DATA: ${peNodes}"
+		def nodesJson = slurper.parseText(peNodes.config)
+		log.info "PE NODES JSON Data: ${nodesJson.nodes}"
+
+		for (node in nodesJson.nodes){
+			if (node.certname == instanceMatch.keyValue){
+				puppetEnterprisePayload.put("nodedata",node)
+			}
 		}
 
+		JedisPooled jedis = new JedisPooled("localhost", 6379);
+		def facts = jedis.get(instanceMatch.keyValue)
+
 		//if (!facts?.trim()){	
-			log.info "FOUND DFACE"
-			JsonSlurper slurper = new JsonSlurper()
 			def teso = slurper.parseText(facts)
 			def factsOut = []
 			def factList = []
@@ -90,7 +107,6 @@ class PuppetEnterpriseInstanceTabProvider extends AbstractInstanceTabProvider {
         //println "Output ${json}"
 		println "Facts: ${factsResults.content}"
 		def factsJson = slurper.parseText(factsResults.content)
-
 
 		// Evaluate whether the query returned a host.
 		// If the host was not found then render the HTML template
@@ -154,32 +170,9 @@ class PuppetEnterpriseInstanceTabProvider extends AbstractInstanceTabProvider {
 				dataOut << reportMap
 			}
 			println dataOut
-
-			def osfacts = factsJson[0].facts.data[1].value
-			def memoryfacts = factsJson[0].facts.data[14].value
-			def cpufacts = factsJson[0].facts.data[50].value
-			println "memory facts: ${memoryfacts}"
-			println "cpu facts: ${cpufacts}"
-
-			// Set the values of the HashMap object (defined on line #51)
-			// that will be used to populate the HTML template
-			puppetEnterprisePayload.put("status", status)
-			puppetEnterprisePayload.put("resources", resources)
-			puppetEnterprisePayload.put("environment", environment)
-			puppetEnterprisePayload.put("agentversion", agentversion)
-			puppetEnterprisePayload.put("rectime", rectime)
-			puppetEnterprisePayload.put("reports", dataOut)
-			puppetEnterprisePayload.put("osfacts", osfacts)
-			puppetEnterprisePayload.put("memoryfacts", memoryfacts)
-			puppetEnterprisePayload.put("cpufacts", cpufacts)
-			puppetEnterprisePayload.put("id", instance.id)
-			puppetEnterprisePayload.put("certname",instance.hostName +'.grt.local')
-
-			// Set the value of the model object to the HashMap object
-			model.object = puppetEnterprisePayload
 			*/
 			model.object = puppetEnterprisePayload
-			getRenderer().renderTemplate("hbs/instanceTab", model)
+			getRenderer().renderTemplate("hbs/puppetEnterpriseInstanceTab", model)
 
 		}
 	
@@ -194,7 +187,19 @@ class PuppetEnterpriseInstanceTabProvider extends AbstractInstanceTabProvider {
 	 */
 	@Override
 	Boolean show(Instance instance, User user, Account account) {
-		return true
+		// Show the instance tab only if there is a corresponding reference in the database
+		def showState = false
+		def dataMatch = morpheusContext.async.referenceData.find(new DataQuery().withFilters([
+				new DataFilter('refType', "Instance"),
+				new DataFilter('refId', instance.id),
+				new DataFilter('name', "instance-tab-ui")
+		])).blockingGet()
+		if (dataMatch){
+			showState = true
+		} else {
+			showState = false
+		}
+		return showState
 	}
 
 	/**

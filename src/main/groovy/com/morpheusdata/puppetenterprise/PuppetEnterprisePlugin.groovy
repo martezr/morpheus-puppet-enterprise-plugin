@@ -30,6 +30,7 @@ class PuppetEnterprisePlugin extends Plugin {
         this.registerProvider(new PuppetEnterpriseIntegrationProvider(this,this.morpheus))
         this.registerProvider(new PuppetEnterpriseInstanceTabProvider(this,this.morpheus))
         this.registerProvider(new PuppetEnterpriseReportProvider(this,this.morpheus))
+        this.registerProvider(new PuppetEnterpriseTagNodeTaskProvider(this,this.morpheus))
         this.registerProvider(new PuppetEnterpriseBoltTaskProvider(this,this.morpheus))
         this.registerProvider(new PuppetEnterpriseBoltPlanTaskProvider(this,this.morpheus))
         this.registerProvider(new PuppetEnterpriseGuidanceProvider(this,this.morpheus))

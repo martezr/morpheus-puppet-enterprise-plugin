@@ -69,8 +69,6 @@ class PuppetEnterpriseGuidanceProvider extends AbstractGuidanceRecommendationPro
 
 		List<Long> cloudIds = clouds.collect{it.id} as List<Long>
 
-		String latestLinuxAgentVersion = morpheusContext.services.admin.getAppliance().getLatestLinuxAgentVersion()
-		String latestWindowsAgentVersion = morpheusContext.services.admin.getAppliance().getLatestWindowsAgentVersion()
 		if(cloudIds) {
 			log.info("Cloud IDs: ${cloudIds}")
 			morpheusContext.async.computeServer.listIdentityProjections(new DataQuery().withFilters(new DataFilter<List<Long>>("zone.id","in",cloudIds))).buffer(50).observeOn(Schedulers.io()).flatMap { List< ComputeServerIdentityProjection> computeServeridentities ->
@@ -111,13 +109,9 @@ class PuppetEnterpriseGuidanceProvider extends AbstractGuidanceRecommendationPro
 					log.info("Adding ${discoveriesToAdd.size()} discoveries")
 					morpheusContext.services.discovery.bulkCreate(discoveriesToAdd)
 				}
-
 		}.blockingSubscribe()
-
-
 		}
-		//morpheus.async.cloud.list(new DataQuery())
-        */
+		*/
 	}
 
 	@Override
@@ -145,7 +139,7 @@ class PuppetEnterpriseGuidanceProvider extends AbstractGuidanceRecommendationPro
 
 	@Override
 	String getDescription() {
-		return "Upgrade the agent to the latest version"
+		return ""
 	}
 
 	@Override

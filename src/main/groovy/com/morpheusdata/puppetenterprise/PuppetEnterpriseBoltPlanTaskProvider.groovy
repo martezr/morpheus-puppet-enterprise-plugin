@@ -23,6 +23,11 @@ class PuppetEnterpriseBoltPlanTaskProvider implements TaskProvider {
 	}
 
 	@Override
+	ExecutableTaskInterface getService() {
+		return new PuppetEnterpriseBoltPlanTaskService(morpheus)
+	}
+
+	@Override
 	MorpheusContext getMorpheus() {
 		return morpheusContext
 	}
@@ -114,27 +119,17 @@ class PuppetEnterpriseBoltPlanTaskProvider implements TaskProvider {
 			fieldLabel: 'Job Description',
 			inputType : OptionType.InputType.TEXT,
 		)
-		OptionType boltPlanTimeout = new OptionType(
-			name: 'Bolt Plan Timeout',
-			code: 'bolt.planTimeout',
-			fieldName: 'boltPlanTimeout',
-			fieldLabel: 'Plan Timeout',
-			displayOrder: 3,
-			defaultValue: 0,
-            editable:true,
-			inputType : OptionType.InputType.NUMBER,
-		)
 		OptionType boltPlanParams = new OptionType(
 			name: 'Bolt Plan Parms',
 			code: 'boltPlanParams',
 			fieldName: 'boltPlanParams',
-			displayOrder: 4,
+			displayOrder: 3,
 			defaultValue: '{}',
 			fieldLabel: 'Bolt Plan Parameters',
 			required: true,
 			inputType : OptionType.InputType.CODE_EDITOR,
 		)
-		return [puppetEnterpriseIntegrationBoltPlans, boltPlan, boltPlanJobDescription, boltPlanTimeout, boltPlanParams]
+		return [puppetEnterpriseIntegrationBoltPlans, boltPlan, boltPlanJobDescription, boltPlanParams]
 	}
 
 	@Override
